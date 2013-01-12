@@ -1,11 +1,11 @@
-#+TITLE README of Wöngine
+#+TITLE: README of Wöngine
 
 * Модули
 
 Система синхронизатора модульная: на самом деле синхронизатор только
 вычисляет хеш-суммы файлов, сравнивает их с хранящимися на сервере и
-над разницой производит какие-то действия.  Все удаленные и часть
-локальных действий (сохранение скачанных файлов) лежит на модулях.
+запрашивает выполнение определенных действий над полученной разницой.
+Реализация всех действий кроме чисто локальных лежит на модулях.
 
 API для модуля:
 
@@ -13,7 +13,7 @@ API для модуля:
 (defgeneric digester (storage)
   (:documentation
    "Returns preferable digester.
-Posiible values :MD5, :SHA1 and other, supported by `ironclad'."))
+Possible values :MD5, :SHA1 and other, supported by `ironclad'."))
 
 (defgeneric initialize-empty (storage)
   (:documentation "Initializes empty storage. If needed.")
@@ -52,19 +52,20 @@ Overwrites existing files."))
 
 #+BEGIN_SRC lisp
 (make-instance 'woengine:ftp-storage
-               :digester :md5 ;; хеш-функция
+               :digester :md5
                :host "ftp.server.url"
                :username "username"
                :password "password"
                :root "path/to/storage/root/")
 #+END_SRC
 
-К полученному объекту можно применить метод =initialize-empty=,
-который инициализирует директорию на ftp для работы с wöngine, а после
-этого, функцию =sync=, которая кроме первого параметра ---
-объекта-места хранения принимает один обязательный параметр --- путь к
-локальному корню синхронизации, а также один необязательный ---
-направление синхронизации (по умолчанию nil --- на сервер).
+К полученному объекту можно применить метод
+=woengine:initialize-empty=, который инициализирует директорию на ftp
+для работы с wöngine, а после этого, функцию =woengine:sync=, которая
+кроме первого параметра --- объекта-места хранения принимает один
+обязательный параметр --- путь к локальному корню синхронизации, а
+также один необязательный --- направление синхронизации (по умолчанию
+=nil= --- на сервер).
 
 ** ВАЖНО
 

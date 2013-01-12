@@ -11,7 +11,7 @@
 (defgeneric digester (storage)
   (:documentation
    "Returns preferable digester.
-Posiible values :MD5, :SHA1 and other, supported by `ironclad'."))
+Possible values :MD5, :SHA1 and other, supported by `ironclad'."))
 
 (defgeneric initialize-empty (storage)
   (:documentation "Initializes empty storage. If needed.")
