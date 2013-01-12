@@ -9,7 +9,7 @@
 
 API для модуля:
 
-#+SOURCE lisp
+#+BEGIN_SRC lisp
 (defgeneric digester (storage)
   (:documentation
    "Returns preferable digester.
@@ -44,20 +44,20 @@ Overwrites existing files."))
 (defgeneric delete-remote (storage remote)
   (:documentation
    "Deletes remote files and directories"))
-#+END_SOURCE
+#+END_SRC
 
 * Работа с wöngine с использованием ftp модуля
 
 Прежде всего, необходимо определить место хранения, делается это так:
 
-#+SOURCE lisp
+#+BEGIN_SRC lisp
 (make-instance 'woengine:ftp-storage
                :digester :md5 ;; хеш-функция
                :host "ftp.server.url"
                :username "username"
                :password "password"
                :root "path/to/storage/root/")
-#+END_SOURCE
+#+END_SRC
 
 К полученному объекту можно применить метод =initialize-empty=,
 который инициализирует директорию на ftp для работы с wöngine, а после
