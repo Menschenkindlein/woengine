@@ -1,0 +1,72 @@
+#+TITLE README of Wöngine
+
+* Модули
+
+Система синхронизатора модульная: на самом деле синхронизатор только
+вычисляет хеш-суммы файлов, сравнивает их с хранящимися на сервере и
+над разницой производит какие-то действия.  Все удаленные и часть
+локальных действий (сохранение скачанных файлов) лежит на модулях.
+
+API для модуля:
+
+#+SOURCE lisp
+(defgeneric digester (storage)
+  (:documentation
+   "Returns preferable digester.
+Posiible values :MD5, :SHA1 and other, supported by `ironclad'."))
+
+(defgeneric initialize-empty (storage)
+  (:documentation "Initializes empty storage. If needed.")
+  (:method ((storage t)) nil))
+
+(defgeneric retrieve-hashes (storage)
+  (:documentation
+   "Retrieves hashes in the same form as STORE-HASHES."))
+
+(defgeneric store-hashes (storage hashes)
+  (:documentation
+   "Stores hashes, given as list."))
+
+(defgeneric retrieve-files (storage local-root paths)
+  (:documentation
+   "Retrieves files.
+Directories assumed to be existing."))
+
+(defgeneric store-files (storage local-root local-paths)
+  (:documentation
+   "Stores files, given by relative path in the same relative remote path.
+Overwrites existing files."))
+
+(defgeneric make-remote-directories (storage paths)
+  (:documentation
+   "Makes remote directories."))
+
+(defgeneric delete-remote (storage remote)
+  (:documentation
+   "Deletes remote files and directories"))
+#+END_SOURCE
+
+* Работа с wöngine с использованием ftp модуля
+
+Прежде всего, необходимо определить место хранения, делается это так:
+
+#+SOURCE lisp
+(make-instance 'woengine:ftp-storage
+               :digester :md5 ;; хеш-функция
+               :host "ftp.server.url"
+               :username "username"
+               :password "password"
+               :root "path/to/storage/root/")
+#+END_SOURCE
+
+К полученному объекту можно применить метод =initialize-empty=,
+который инициализирует директорию на ftp для работы с wöngine, а после
+этого, функцию =sync=, которая кроме первого параметра ---
+объекта-места хранения принимает один обязательный параметр --- путь к
+локальному корню синхронизации, а также один необязательный ---
+направление синхронизации (по умолчанию nil --- на сервер).
+
+** ВАЖНО
+
+Поскольку хеши передаются как ascii, использование кириллицы в именах
+файлов не допускается!  По моему, это к лучшему. :)
