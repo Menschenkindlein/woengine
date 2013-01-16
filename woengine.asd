@@ -1,6 +1,6 @@
 (defsystem woengine
-  :depends-on ("ftp" "ironclad")
+  :depends-on ("ftp" "ironclad" "cl-fad")
   :serial t
   :components ((:file "woengine")
-	       (:file "woengine-ftp")))
+               (:file "woengine-ftp")))
 

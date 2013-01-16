@@ -9,23 +9,23 @@
 
 (defmacro with-ftp-storage (storage &body body)
   `(ftp:with-ftp-connection (conn :hostname (host ,storage)
-				  :username (username ,storage)
-				  :password (password ,storage)
-				  :passive-ftp-p t)
+                                  :username (username ,storage)
+                                  :password (password ,storage)
+                                  :passive-ftp-p t)
      (ftp:send-cwd-command conn (root ,storage))
      ,@body))
 
 (defmethod initialize-empty ((storage ftp-storage))
   (ftp:with-ftp-connection (conn :hostname (host storage)
-				 :username (username storage)
-				 :password (password storage)
-				 :passive-ftp-p t)
+                                 :username (username storage)
+                                 :password (password storage)
+                                 :passive-ftp-p t)
     (ftp:send-mkd-command conn (root storage))
     (ftp:send-cwd-command conn (root storage))
     (ftp:store-file conn
-		    (make-string-input-stream "NIL")
-		    ".woengine-hashes"
-		    :type :ascii)))
+                    (make-string-input-stream "NIL")
+                    ".woengine-hashes"
+                    :type :ascii)))
 
 (defmethod digester ((storage ftp-storage))
   (slot-value storage 'digester))
@@ -39,10 +39,10 @@
 (defmethod store-hashes (storage hashes)
   (with-ftp-storage storage
     (ftp:store-file conn
-		    (make-string-input-stream
-		     (prin1-to-string hashes))
-		    ".woengine-hashes"
-		    :type :ascii)))
+                    (make-string-input-stream
+                     (prin1-to-string hashes))
+                    ".woengine-hashes"
+                    :type :ascii)))
 
 (defmethod retrieve-files (storage local-root paths)
   (with-ftp-storage storage

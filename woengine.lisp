@@ -1,8 +1,8 @@
 (defpackage #:woengine
   (:use #:cl)
   (:export #:sync
-	   #:initialize-empty
-	   #:ftp-storage))
+           #:initialize-empty
+           #:ftp-storage))
 
 (in-package #:woengine)
 
@@ -43,30 +43,29 @@ Overwrites existing files."))
   (:documentation
    "Deletes remote files and directories"))
 
-;;;; Utils ;;; Really here may be used `cl-fad'
+;;;; Local actions
 
-(defun directoryp (filespec)
-  "Returns NIL if pathspec does not look like directory and T otherwise."
-  (string= (file-namestring filespec) ""))
-
-(defun all-files-directory (pathname)
-  "Recursively returns all files in directory."
-  (if (directoryp pathname)
-      (cons (truename pathname)
-            (loop for path in (directory (merge-pathnames
-                                          (make-pathname :name :wild
-                                                         :type :wild)
-                                          (truename pathname)))
-               appending
-                 (all-files-directory path)))
-      (list (truename pathname))))
+(defun directory-hash (pathname digester)
+  "Returns all subdirectories and files with hashes in directory."
+  (labels ((dir-hash-rec (path dig local)
+             (if (cl-fad:directory-pathname-p path)
+                 (cons (list (enough-namestring path local))
+                       (loop for pth in (cl-fad:list-directory path)
+                          appending
+                            (dir-hash-rec pth digester local)))
+                 (list (list (enough-namestring path local)
+                             (unless (cl-fad:directory-pathname-p path)
+                               (ironclad:digest-file digester path)))))))
+    (loop for path in (cl-fad:list-directory pathname)
+       appending
+         (dir-hash-rec path digester (truename pathname)))))
 
 (defun delete-local (local paths)
   (dolist (path paths)
     (setf path (merge-pathnames path local))
-    (if (directoryp path)
-	(sb-ext:delete-directory path)
-	(delete-file path))))
+    (if (cl-fad:directory-pathname-p path)
+        (cl-fad:delete-directory-and-files path)
+        (delete-file path))))
 
 (defun make-directories (local paths)
   (dolist (path paths)
@@ -80,54 +79,51 @@ Overwrites existing files."))
 Or restores local copy from remote one."
   (setf local (truename local))
   (let* ((local-hashes
-	  (mapcar (lambda (file)
-		    (list (enough-namestring file local)
-			  (unless (directoryp file)
-			    (ironclad:digest-file (digester storage) file))))
-		  (remove local (all-files-directory local) :test #'equal)))
-	 (remote-hashes (retrieve-hashes storage))
-	 (to-copy (mapcar #'car
-			  (set-difference
-			   (if restore remote-hashes local-hashes)
-			   (if restore local-hashes  remote-hashes)
-			   :test #'equalp)))
-	 (to-delete (append
-		     (intersection to-copy
-				   (mapcar #'car
-					   (if restore
-					       local-hashes
-					       remote-hashes))
-				   :test #'string=)
-		     (sort
-		      (mapcar #'car
-			      (set-difference
-			       (if restore local-hashes  remote-hashes)
-			       (if restore remote-hashes local-hashes)
-			       :test #'string= :key #'car))
-		      #'string>))))
-      (when to-delete
-	(format t "Deleting ~:[remote~;local~] paths:~{~%~a~}~%~%"
-		restore to-delete)
-	(funcall (if restore #'delete-local #'delete-remote)
-		 (if restore local          storage)
-		 to-delete))
-      (let ((dirs-to-copy (sort (remove-if-not #'directoryp to-copy)
-				#'string<))
-	    (files-to-copy (remove-if #'directoryp to-copy)))
-	(when dirs-to-copy
-	  (format t "Creating ~:[remote~;local~] directories:~{~%~a~}~%~%"
-		  restore dirs-to-copy)
-	  (funcall (if restore #'make-directories #'make-remote-directories)
-		   (if restore local              storage)
-		   dirs-to-copy))
-	(format t "~:[Remote~;Local~] directories are up to date.~%~%"
-		restore)
-	(when files-to-copy
-	  (format t "~:[Storing local~;Retrieving remote~] files:~{~%~a~}~%~%"
-		  restore files-to-copy)
-	  (funcall (if restore #'retrieve-files #'store-files)
-		   storage local files-to-copy))
-	(format t "~:[Remote~;Local~] files are up to date.~%~%"
-		restore))
+          (directory-hash local (digester storage)))
+         (remote-hashes (retrieve-hashes storage))
+         (to-copy (mapcar #'car
+                          (set-difference
+                           (if restore remote-hashes local-hashes)
+                           (if restore local-hashes  remote-hashes)
+                           :test #'equalp)))
+         (to-delete (append
+                     (intersection to-copy
+                                   (mapcar #'car
+                                           (if restore
+                                               local-hashes
+                                               remote-hashes))
+                                   :test #'string=)
+                     (sort
+                      (mapcar #'car
+                              (set-difference
+                               (if restore local-hashes  remote-hashes)
+                               (if restore remote-hashes local-hashes)
+                               :test #'string= :key #'car))
+                      #'string>))))
+    (when to-delete
+      (format t "Deleting ~:[remote~;local~] paths:~{~%~a~}~%~%"
+              restore to-delete)
+      (funcall (if restore #'delete-local #'delete-remote)
+               (if restore local          storage)
+               to-delete))
+    (let ((dirs-to-copy
+           (sort (remove-if-not #'cl-fad:directory-pathname-p to-copy)
+                 #'string<))
+          (files-to-copy (remove-if #'cl-fad:directory-pathname-p to-copy)))
+      (when dirs-to-copy
+        (format t "Creating ~:[remote~;local~] directories:~{~%~a~}~%~%"
+                restore dirs-to-copy)
+        (funcall (if restore #'make-directories #'make-remote-directories)
+                 (if restore local              storage)
+                 dirs-to-copy))
+      (format t "~:[Remote~;Local~] directories are up to date.~%~%"
+              restore)
+      (when files-to-copy
+        (format t "~:[Storing local~;Retrieving remote~] files:~{~%~a~}~%~%"
+                restore files-to-copy)
+        (funcall (if restore #'retrieve-files #'store-files)
+                 storage local files-to-copy))
+      (format t "~:[Remote~;Local~] files are up to date.~%~%"
+              restore))
   (unless restore (store-hashes storage local-hashes)))
   (format t "Synchronization is successful!~%~%"))
